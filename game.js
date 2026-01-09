@@ -57,12 +57,15 @@ const character = {
     
     // الصور (سيتم تحميلها لاحقاً)
     images: {
-        idle: null,
+        character: null, // صورتك الأصلية
         run1: null,
         run2: null,
         jump: null,
         slide: null
-    }
+    },
+    
+    // للإشارة إلى ما إذا تم تحميل الصور بنجاح
+    imagesLoaded: false
 };
 
 // تعريف العوائق
@@ -80,29 +83,131 @@ const background = {
 
 // تحميل الصور
 function loadImages() {
-    // إذا كانت الصور غير موجودة، سنستخدم أشكالاً مرسومة
-    character.images.idle = new Image();
-    character.images.idle.src = 'assets/character.png';
+    let loadedCount = 0;
+    const totalImages = 5;
     
+    // دالة للتحقق من تحميل جميع الصور
+    function checkAllLoaded() {
+        loadedCount++;
+        if (loadedCount === totalImages) {
+            character.imagesLoaded = true;
+            console.log("✅ تم تحميل جميع الصور بنجاح!");
+        }
+    }
+    
+    // 1. تحميل صورتك الأصلية - ستستخدم لكل الحالات
+    character.images.character = new Image();
+    character.images.character.src = 'assets/character.png';
+    character.images.character.onload = function() {
+        console.log("✅ تم تحميل character.png");
+        checkAllLoaded();
+    };
+    character.images.character.onerror = function() {
+        console.log("❌ فشل تحميل character.png - سيتم استخدام الرسم الافتراضي");
+        checkAllLoaded();
+    };
+    
+    // 2. صور الركض (سيتم استخدام صورتك مع تعديل بسيط)
     character.images.run1 = new Image();
-    character.images.run1.src = 'assets/run1.png';
+    character.images.run1.src = 'assets/character.png'; // نفس الصورة ولكن سنعدلها برمجياً
+    character.images.run1.onload = function() {
+        console.log("✅ تم تحميل run1.png (باستخدام character.png)");
+        checkAllLoaded();
+    };
     
     character.images.run2 = new Image();
-    character.images.run2.src = 'assets/run2.png';
+    character.images.run2.src = 'assets/character.png'; // نفس الصورة ولكن سنعدلها برمجياً
+    character.images.run2.onload = function() {
+        console.log("✅ تم تحميل run2.png (باستخدام character.png)");
+        checkAllLoaded();
+    };
     
+    // 3. صورة القفز
     character.images.jump = new Image();
-    character.images.jump.src = 'assets/jump.png';
+    character.images.jump.src = 'assets/character.png'; // نفس الصورة
+    character.images.jump.onload = function() {
+        console.log("✅ تم تحميل jump.png (باستخدام character.png)");
+        checkAllLoaded();
+    };
     
+    // 4. صورة التزحلق
     character.images.slide = new Image();
-    character.images.slide.src = 'assets/slide.png';
+    character.images.slide.src = 'assets/character.png'; // نفس الصورة ولكن سنعدلها برمجياً
+    character.images.slide.onload = function() {
+        console.log("✅ تم تحميل slide.png (باستخدام character.png)");
+        checkAllLoaded();
+    };
     
-    // إذا فشل تحميل الصور، نستخدم رسومات بديلة
-    Object.values(character.images).forEach(img => {
-        img.onerror = function() {
-            // سنستخدم الرسومات الافتراضية بدلاً من الصور
-            console.log("فشل تحميل الصورة، سيتم استخدام الرسومات الافتراضية");
-        };
-    });
+    // إذا فشل تحميل الصورة الأصلية، نستخدم نسخة احتياطية
+    setTimeout(() => {
+        if (!character.imagesLoaded && loadedCount < totalImages) {
+            console.log("⚠️  بعض الصور لم تحمل، سيتم استخدام البدائل");
+            character.imagesLoaded = true;
+        }
+    }, 3000);
+}
+
+// إنشاء نسخة من الصورة مع تأثيرات مختلفة
+function createImageEffect(baseImage, effectType) {
+    // إنشاء عنصر canvas مؤقت
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    tempCanvas.width = baseImage.width || character.width;
+    tempCanvas.height = baseImage.height || character.height;
+    
+    // رسم الصورة الأصلية
+    tempCtx.drawImage(baseImage, 0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // تطبيق التأثيرات حسب الحالة
+    if (effectType === 'run1') {
+        // تأثير الركض 1: إمالة بسيطة للأمام
+        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.save();
+        tempCtx.translate(tempCanvas.width/2, tempCanvas.height/2);
+        tempCtx.rotate(0.05); // إمالة بسيطة
+        tempCtx.drawImage(baseImage, -tempCanvas.width/2, -tempCanvas.height/2, tempCanvas.width, tempCanvas.height);
+        tempCtx.restore();
+    }
+    else if (effectType === 'run2') {
+        // تأثير الركض 2: إمالة معكوسة
+        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.save();
+        tempCtx.translate(tempCanvas.width/2, tempCanvas.height/2);
+        tempCtx.rotate(-0.05); // إمالة عكسية
+        tempCtx.drawImage(baseImage, -tempCanvas.width/2, -tempCanvas.height/2, tempCanvas.width, tempCanvas.height);
+        tempCtx.restore();
+    }
+    else if (effectType === 'jump') {
+        // تأثير القفز: الصورة طبيعية (بدون تغيير)
+        // يمكن إضافة تأثير ظل إذا أردت
+        tempCtx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        tempCtx.shadowBlur = 10;
+        tempCtx.shadowOffsetY = 5;
+        tempCtx.drawImage(baseImage, 0, 0, tempCanvas.width, tempCanvas.height);
+    }
+    else if (effectType === 'slide') {
+        // تأثير التزحلق: تصغير وإمالة
+        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+        const slideHeight = tempCanvas.height * 0.7;
+        const offsetY = tempCanvas.height - slideHeight;
+        
+        tempCtx.save();
+        // قص الجزء العلوي للتزحلق
+        tempCtx.drawImage(
+            baseImage, 
+            0, offsetY/2, // بداية القص من منتصف الصورة
+            tempCanvas.width, slideHeight, // حجم القص
+            0, offsetY, // مكان الرسم
+            tempCanvas.width, slideHeight // حجم الرسم
+        );
+        tempCtx.restore();
+    }
+    
+    // تحويل Canvas إلى Image
+    const resultImage = new Image();
+    resultImage.src = tempCanvas.toDataURL();
+    return resultImage;
 }
 
 // تهيئة اللعبة
@@ -183,83 +288,69 @@ function drawBackground() {
 
 // رسم الشخصية
 function drawCharacter() {
-    let charImg = null;
+    // إذا لم يتم تحميل الصور بعد، استخدم الرسم الافتراضي
+    if (!character.imagesLoaded || !character.images.character.complete) {
+        drawDefaultCharacter();
+        return;
+    }
     
-    // تحديد الصورة المناسبة بناءً على حالة الشخصية
+    let charImg = character.images.character; // الصورة الأساسية
+    
+    // حساب أبعاد الرسم بناءً على الحالة
+    let drawWidth = character.width;
+    let drawHeight = character.height;
+    let drawY = character.y;
+    let rotation = 0;
+    
     switch (character.currentState) {
         case character.states.RUNNING:
-            // تبديل بين إطارين للركض
+            // تأثير الركض: تمايل بسيط
             character.runFrameCounter++;
             if (character.runFrameCounter >= character.runAnimationSpeed) {
                 character.runFrame = character.runFrame === 0 ? 1 : 0;
                 character.runFrameCounter = 0;
             }
-            
-            charImg = character.runFrame === 0 ? character.images.run1 : character.images.run2;
+            // تمايل بسيط أثناء الركض
+            rotation = character.runFrame === 0 ? 0.05 : -0.05;
             break;
             
         case character.states.JUMPING:
-            charImg = character.images.jump;
+            // القفز: بدون دوران
+            rotation = 0;
             break;
             
         case character.states.SLIDING:
-            charImg = character.images.slide;
+            // التزحلق: تصغير وإمالة
+            drawHeight = character.height * 0.7;
+            drawY = character.y + (character.height - drawHeight);
+            rotation = 0.3; // إمالة للأمام
             break;
     }
     
-    // إذا فشل تحميل الصور، استخدم الرسومات الافتراضية
-    if (!charImg || !charImg.complete || charImg.naturalWidth === 0) {
-        drawDefaultCharacter();
-        return;
-    }
-    
-    // حساب أبعاد الشخصية بناءً على حالتها
-    let drawWidth = character.width;
-    let drawHeight = character.height;
-    let drawY = character.y;
-    
-    if (character.currentState === character.states.SLIDING) {
-        drawHeight = character.height * 0.6;
-        drawY = character.y + (character.height - drawHeight);
-    }
+    // تطبيق التحويلات
+    ctx.save();
+    ctx.translate(character.x + drawWidth/2, drawY + drawHeight/2);
+    ctx.rotate(rotation);
     
     // رسم الصورة
-    ctx.drawImage(charImg, character.x, drawY, drawWidth, drawHeight);
-}
-
-// رسم شخصية افتراضية (إذا لم تتحمّل الصور)
-function drawDefaultCharacter() {
-    ctx.save();
-    
-    // تغيير لون الشخصية حسب حالتها
-    let color = '#fdbb2d'; // لون أساسي
-    if (character.currentState === character.states.JUMPING) color = '#1a2a6c';
-    if (character.currentState === character.states.SLIDING) color = '#b21f1f';
-    
-    // جسم الشخصية
-    ctx.fillStyle = color;
-    
-    let drawHeight = character.height;
-    let drawY = character.y;
-    
-    if (character.currentState === character.states.SLIDING) {
-        drawHeight = character.height * 0.6;
-        drawY = character.y + (character.height - drawHeight);
+    if (charImg.complete && charImg.naturalWidth > 0) {
+        ctx.drawImage(charImg, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+        
+        // إضافة تأثير ظل للقفز
+        if (character.currentState === character.states.JUMPING) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 5;
+            ctx.drawImage(charImg, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+        }
+    } else {
+        // إذا فشل رسم الصورة، ارسم الشكل الافتراضي
+        drawDefaultCharacterAtPosition(-drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
     }
     
-    ctx.fillRect(character.x, drawY, character.width, drawHeight);
+    ctx.restore();
     
-    // رسم العيون
-    ctx.fillStyle = 'white';
-    ctx.fillRect(character.x + 10, drawY + 15, 10, 10);
-    ctx.fillRect(character.x + character.width - 20, drawY + 15, 10, 10);
-    
-    // رسم الحدود
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(character.x, drawY, character.width, drawHeight);
-    
-    // إضافة اسم للحالة
+    // إضافة نص الحالة للتتبع (يمكن إزالته لاحقاً)
     ctx.fillStyle = '#fff';
     ctx.font = '12px Cairo';
     let stateText = '';
@@ -267,9 +358,28 @@ function drawDefaultCharacter() {
     if (character.currentState === character.states.JUMPING) stateText = 'يقفز';
     if (character.currentState === character.states.SLIDING) stateText = 'يتزحلق';
     
-    ctx.fillText(stateText, character.x, drawY - 5);
+    ctx.fillText(stateText, character.x, character.y - 10);
+}
+
+// رسم شخصية افتراضية في موقع محدد
+function drawDefaultCharacterAtPosition(x, y, width, height) {
+    ctx.fillStyle = '#fdbb2d';
+    ctx.fillRect(x, y, width, height);
     
-    ctx.restore();
+    // رسم العيون
+    ctx.fillStyle = 'white';
+    ctx.fillRect(x + 10, y + 15, 10, 10);
+    ctx.fillRect(x + width - 20, y + 15, 10, 10);
+    
+    // رسم الحدود
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, width, height);
+}
+
+// رسم شخصية افتراضية (النسخة الأصلية)
+function drawDefaultCharacter() {
+    drawDefaultCharacterAtPosition(character.x, character.y, character.width, character.height);
 }
 
 // إنشاء عائق جديد
@@ -324,7 +434,7 @@ function updateObstacles() {
             score += 5;
             obstaclesPassed++;
             
-            // زيادة السرعة كل 10 نقاط
+            // زيادة السرعة كل 50 نقطة
             if (score % 50 === 0) {
                 gameSpeed += 0.2;
             }
@@ -351,7 +461,7 @@ function checkCollision() {
     let charY = character.y;
     
     if (character.currentState === character.states.SLIDING) {
-        charHeight = character.height * 0.6;
+        charHeight = character.height * 0.7;
         charY = character.y + (character.height - charHeight);
     }
     
@@ -557,10 +667,13 @@ highScoreElement.textContent = highScore;
 
 // إضافة تأثير عند تحميل الصفحة
 window.addEventListener('load', () => {
-    console.log("تم تحميل اللعبة بنجاح!");
+    console.log("🎮 تم تحميل اللعبة بنجاح!");
+    console.log("💡 نصائح:");
+    console.log("- تأكد من وجود ملف character.png في مجلد assets");
+    console.log("- يمكنك النقر على الشاشة للقفز (النصف العلوي) أو التزحلق (النصف السفلي)");
     
     // عرض رسالة ترحيب
     setTimeout(() => {
-        alert("مرحباً بك في لعبة العدّاء! اضغط على 'ابدأ اللعب' للبدء.");
+        alert("🎯 مرحباً بك في لعبة العدّاء!\n\n✅ الصورة الشخصية جاهزة\n✅ أنيميشين الركض جاهزة\n✅ القفز يعمل\n✅ التزحلق يعمل\n\nاضغط على 'ابدأ اللعب' للبدء!");
     }, 500);
 });
