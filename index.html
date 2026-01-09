@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>لعبة العدّاء - سوبوي ستايل</title>
+    <title>Subway Runner - لعبة 3D مثل سوبوي</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
@@ -11,76 +11,139 @@
 <body>
     <div class="game-container">
         <header class="game-header">
-            <h1><i class="fas fa-running"></i> لعبة العدّاء</h1>
-            <p class="subtitle">تجنب العوائق واجمع النقاط!</p>
+            <h1><i class="fas fa-subway"></i> Subway Runner</h1>
+            <p class="subtitle">عدو للأمام وتجنب العوائق - لعبة 3D</p>
         </header>
         
         <div class="game-screen">
             <!-- شاشة البداية -->
             <div id="start-screen" class="screen active">
-                <div class="instructions">
-                    <h2><i class="fas fa-gamepad"></i> كيفية اللعب</h2>
-                    <ul>
-                        <li><i class="fas fa-hand-point-up"></i> المس الشاشة للقفز</li>
-                        <li><i class="fas fa-hand-point-down"></i> المس مطولاً للتزحلق</li>
-                        <li><i class="fas fa-bolt"></i> تجنب العوائق لجمع النقاط</li>
-                        <li><i class="fas fa-chart-line"></i> تزداد السرعة كل 10 نقاط</li>
+                <div class="instructions-3d">
+                    <h2><i class="fas fa-gamepad"></i> كيفية اللعب - 3D</h2>
+                    <div class="controls-3d">
+                        <div class="control-item">
+                            <div class="control-arrow left"><i class="fas fa-arrow-left"></i></div>
+                            <span>تحريك لليسار</span>
+                        </div>
+                        <div class="control-item">
+                            <div class="control-arrow right"><i class="fas fa-arrow-right"></i></div>
+                            <span>تحريك لليمين</span>
+                        </div>
+                        <div class="control-item">
+                            <div class="control-arrow up"><i class="fas fa-arrow-up"></i></div>
+                            <span>القفز</span>
+                        </div>
+                        <div class="control-item">
+                            <div class="control-arrow down"><i class="fas fa-arrow-down"></i></div>
+                            <span>التزحلق</span>
+                        </div>
+                    </div>
+                    <ul class="features-list">
+                        <li><i class="fas fa-cube"></i> رسومات ثلاثية الأبعاد</li>
+                        <li><i class="fas fa-road"></i> طريق متحرك للأمام</li>
+                        <li><i class="fas fa-train"></i> عوائق متحركة من بعيد</li>
+                        <li><i class="fas fa-coins"></i> جمع العملات</li>
                     </ul>
-                    <button id="start-btn" class="btn">
-                        <i class="fas fa-play"></i> ابدأ اللعب
+                    <button id="start-btn" class="btn-3d">
+                        <i class="fas fa-play"></i> ابدأ الركض
                     </button>
                 </div>
                 
-                <div class="character-preview">
-                    <div class="preview-title">شخصيتك:</div>
-                    <div class="preview-character">
-                        <img src="assets/character.png" id="preview-img" alt="شخصية اللعبة">
+                <div class="character-preview-3d">
+                    <div class="preview-title">شخصيتك في العالم 3D:</div>
+                    <div class="character-3d-model">
+                        <img src="assets/character.png" id="preview-img-3d" alt="شخصية 3D">
                     </div>
                 </div>
             </div>
             
             <!-- شاشة اللعبة -->
             <div id="game-screen" class="screen">
-                <canvas id="game-canvas" width="800" height="400"></canvas>
-                <div class="mobile-controls">
-                    <button id="jump-btn" class="control-btn">
-                        <i class="fas fa-arrow-up"></i> قفز
-                    </button>
-                    <button id="slide-btn" class="control-btn">
-                        <i class="fas fa-arrow-down"></i> تزحلق
-                    </button>
+                <div class="game-area-3d">
+                    <canvas id="game-canvas" width="800" height="500"></canvas>
+                    <div class="depth-indicator">
+                        <div class="depth-bar"></div>
+                        <div class="depth-text">المسافة المقطوعة</div>
+                    </div>
+                </div>
+                <div class="mobile-controls-3d">
+                    <div class="dpad">
+                        <div class="dpad-row">
+                            <button id="left-btn" class="dpad-btn">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <button id="up-btn" class="dpad-btn">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                            <button id="right-btn" class="dpad-btn">
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                        <div class="dpad-row">
+                            <button id="down-btn" class="dpad-btn slide-btn">
+                                <i class="fas fa-arrow-down"></i> تزحلق
+                            </button>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="jump-btn" class="action-btn">
+                            <i class="fas fa-arrow-up"></i> قفز
+                        </button>
+                    </div>
                 </div>
             </div>
             
             <!-- شاشة النهاية -->
             <div id="end-screen" class="screen">
-                <div class="game-over">
-                    <h2><i class="fas fa-trophy"></i> انتهت اللعبة!</h2>
-                    <div class="score-display">
-                        <p>نقاطك النهائية: <span id="final-score">0</span></p>
-                        <p>أفضل نتيجة: <span id="high-score">0</span></p>
-                        <p>العوائق التي تجاوزتها: <span id="obstacles-passed">0</span></p>
+                <div class="game-over-3d">
+                    <h2><i class="fas fa-trophy"></i> انتهت الجولة!</h2>
+                    <div class="score-display-3d">
+                        <div class="score-item">
+                            <i class="fas fa-road"></i>
+                            <span>المسافة:</span>
+                            <span id="distance-traveled">0</span> م
+                        </div>
+                        <div class="score-item">
+                            <i class="fas fa-coins"></i>
+                            <span>العملات:</span>
+                            <span id="coins-collected">0</span>
+                        </div>
+                        <div class="score-item">
+                            <i class="fas fa-star"></i>
+                            <span>النقاط:</span>
+                            <span id="final-score">0</span>
+                        </div>
+                        <div class="score-item">
+                            <i class="fas fa-crown"></i>
+                            <span>أفضل نتيجة:</span>
+                            <span id="high-score">0</span>
+                        </div>
                     </div>
-                    <button id="restart-btn" class="btn">
-                        <i class="fas fa-redo"></i> العب مرة أخرى
+                    <button id="restart-btn" class="btn-3d">
+                        <i class="fas fa-redo"></i> جولة جديدة
                     </button>
                 </div>
             </div>
         </div>
         
-        <div class="game-info">
-            <div class="stats">
-                <div class="stat">
-                    <span class="stat-icon"><i class="fas fa-star"></i></span>
-                    <span class="stat-label">النقاط:</span>
-                    <span id="score" class="stat-value">0</span>
+        <div class="game-info-3d">
+            <div class="stats-3d">
+                <div class="stat-3d">
+                    <span class="stat-icon"><i class="fas fa-road"></i></span>
+                    <span class="stat-label">المسافة:</span>
+                    <span id="distance" class="stat-value">0 م</span>
                 </div>
-                <div class="stat">
-                    <span class="stat-icon"><i class="fas fa-tachometer-alt"></i></span>
+                <div class="stat-3d">
+                    <span class="stat-icon"><i class="fas fa-coins"></i></span>
+                    <span class="stat-label">العملات:</span>
+                    <span id="coins" class="stat-value">0</span>
+                </div>
+                <div class="stat-3d">
+                    <span class="stat-icon"><i class="fas fa-bolt"></i></span>
                     <span class="stat-label">السرعة:</span>
                     <span id="speed" class="stat-value">1x</span>
                 </div>
-                <div class="stat">
+                <div class="stat-3d">
                     <span class="stat-icon"><i class="fas fa-heart"></i></span>
                     <span class="stat-label">الأرواح:</span>
                     <span id="lives" class="stat-value">3</span>
@@ -89,10 +152,10 @@
         </div>
         
         <footer class="game-footer">
-            <p>تم التطوير بواسطة مهندس معلوماتية | اللعبة تعمل على متصفح الهاتف</p>
+            <p>Subway Runner - نسخة 3D مثل Subway Surfers</p>
             <div class="github-link">
                 <i class="fab fa-github"></i> 
-                <a href="https://github.com/yourusername/game-project" target="_blank">عرض الكود على GitHub</a>
+                <a href="https://github.com/yourusername/subway-runner-3d" target="_blank">الكود على GitHub</a>
             </div>
         </footer>
     </div>
