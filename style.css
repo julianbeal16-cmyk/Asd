@@ -1,0 +1,390 @@
+/* أنماط عامة */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Cairo', sans-serif;
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    overflow-x: hidden;
+}
+
+.game-container {
+    width: 100%;
+    max-width: 800px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    border: 2px solid #fdbb2d;
+}
+
+/* رأس اللعبة */
+.game-header {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(to right, #1a2a6c, #b21f1f);
+    border-bottom: 3px solid #fdbb2d;
+}
+
+.game-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 5px;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* شاشات اللعبة */
+.game-screen {
+    position: relative;
+    height: 500px;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    display: none;
+}
+
+.screen.active {
+    display: flex;
+}
+
+/* شاشة البداية */
+.instructions {
+    background-color: rgba(26, 42, 108, 0.8);
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    max-width: 500px;
+    border: 2px solid #fdbb2d;
+    margin-bottom: 20px;
+}
+
+.instructions h2 {
+    margin-bottom: 20px;
+    color: #fdbb2d;
+    font-size: 1.8rem;
+}
+
+.instructions ul {
+    list-style-type: none;
+    text-align: right;
+    margin-bottom: 25px;
+}
+
+.instructions li {
+    margin-bottom: 12px;
+    font-size: 1.2rem;
+    padding-right: 10px;
+}
+
+.instructions li i {
+    color: #fdbb2d;
+    margin-left: 10px;
+}
+
+.btn {
+    background: linear-gradient(to right, #b21f1f, #fdbb2d);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.3rem;
+    border-radius: 50px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 auto;
+}
+
+.btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.character-preview {
+    background-color: rgba(253, 187, 45, 0.2);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    margin-top: 20px;
+    border: 1px dashed #fdbb2d;
+}
+
+.preview-title {
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    color: #fdbb2d;
+}
+
+.preview-character {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 3px solid #1a2a6c;
+    background-color: #0a0e29;
+}
+
+.preview-character img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* شاشة اللعبة */
+#game-canvas {
+    width: 100%;
+    height: 400px;
+    background: linear-gradient(to bottom, #1a2a6c 0%, #0a0e29 50%, #1a2a6c 100%);
+    border-radius: 10px;
+    border: 2px solid #fdbb2d;
+    display: block;
+    margin: 0 auto;
+}
+
+.mobile-controls {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    margin-top: 15px;
+    padding: 0 10px;
+}
+
+.control-btn {
+    background: linear-gradient(to bottom, #b21f1f, #8b0000);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    border-radius: 50px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 45%;
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+    background: linear-gradient(to bottom, #8b0000, #b21f1f);
+}
+
+/* شاشة النهاية */
+.game-over {
+    background-color: rgba(178, 31, 31, 0.9);
+    border-radius: 15px;
+    padding: 30px;
+    text-align: center;
+    max-width: 500px;
+    border: 3px solid #fdbb2d;
+}
+
+.game-over h2 {
+    margin-bottom: 25px;
+    color: #fdbb2d;
+    font-size: 2rem;
+}
+
+.score-display {
+    background-color: rgba(26, 42, 108, 0.8);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.score-display p {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+}
+
+.score-display span {
+    color: #fdbb2d;
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* معلومات اللعبة */
+.game-info {
+    padding: 15px 20px;
+    background-color: rgba(10, 14, 41, 0.9);
+    border-top: 2px solid #1a2a6c;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-icon {
+    font-size: 1.8rem;
+    color: #fdbb2d;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 3px;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* تذييل اللعبة */
+.game-footer {
+    text-align: center;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.8);
+    font-size: 0.9rem;
+    border-top: 1px solid #1a2a6c;
+}
+
+.github-link {
+    margin-top: 10px;
+}
+
+.github-link a {
+    color: #fdbb2d;
+    text-decoration: none;
+    margin-right: 5px;
+}
+
+.github-link a:hover {
+    text-decoration: underline;
+}
+
+/* تصميم متجاوب للهواتف */
+@media (max-width: 768px) {
+    .game-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .instructions {
+        padding: 15px;
+    }
+    
+    .instructions h2 {
+        font-size: 1.5rem;
+    }
+    
+    .instructions li {
+        font-size: 1rem;
+    }
+    
+    .btn {
+        padding: 12px 25px;
+        font-size: 1.1rem;
+    }
+    
+    .game-screen {
+        height: 450px;
+    }
+    
+    #game-canvas {
+        height: 350px;
+    }
+    
+    .control-btn {
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+    
+    .stat-icon {
+        font-size: 1.5rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .subtitle {
+        font-size: 1rem;
+    }
+    
+    .game-screen {
+        height: 420px;
+    }
+    
+    #game-canvas {
+        height: 300px;
+    }
+    
+    .mobile-controls {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .control-btn {
+        width: 90%;
+    }
+    
+    .stats {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .stat {
+        flex-direction: row;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .stat-icon {
+        margin-bottom: 0;
+    }
+}
