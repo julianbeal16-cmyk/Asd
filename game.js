@@ -1,3 +1,7 @@
+// ============================================
+// SUBWAY RUNNER - لعبة 3D مثل Subway Surfers
+// ============================================
+
 // العناصر الرئيسية
 const startScreen = document.getElementById('start-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -8,38 +12,58 @@ const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
 // عناصر التحكم
+const leftBtn = document.getElementById('left-btn');
+const rightBtn = document.getElementById('right-btn');
+const upBtn = document.getElementById('up-btn');
+const downBtn = document.getElementById('down-btn');
 const jumpBtn = document.getElementById('jump-btn');
-const slideBtn = document.getElementById('slide-btn');
 
 // عناصر عرض المعلومات
-const scoreElement = document.getElementById('score');
+const distanceElement = document.getElementById('distance');
+const coinsElement = document.getElementById('coins');
 const speedElement = document.getElementById('speed');
 const livesElement = document.getElementById('lives');
+const distanceTraveledElement = document.getElementById('distance-traveled');
+const coinsCollectedElement = document.getElementById('coins-collected');
 const finalScoreElement = document.getElementById('final-score');
 const highScoreElement = document.getElementById('high-score');
-const obstaclesPassedElement = document.getElementById('obstacles-passed');
 
 // متغيرات اللعبة
 let gameRunning = false;
-let score = 0;
+let distance = 0;
+let coins = 0;
 let highScore = localStorage.getItem('highScore') || 0;
 let lives = 3;
 let gameSpeed = 1;
-let obstaclesPassed = 0;
 let animationId;
+let lastTime = 0;
 
-// تعريف الشخصية
-const character = {
-    x: 100,
+// إعدادات العالم 3D
+const WORLD = {
+    ROAD_WIDTH: 600,
+    ROAD_LENGTH: 2000,
+    LANES: 3,
+    LANE_WIDTH: 200,
+    FOV: 800, // مجال الرؤية
+    CAMERA_HEIGHT: 150
+};
+
+// تعريف الشخصية (اللاعب)
+const player = {
+    x: WORLD.ROAD_WIDTH / 2,
     y: 300,
+    z: 500, // البعد عن الكاميرا
+    lane: 1, // المسار الأوسط (0=يسار, 1=وسط, 2=يمين)
     width: 60,
     height: 90,
     velocityY: 0,
     gravity: 0.8,
-    jumpForce: -15,
+    jumpForce: -18,
     isJumping: false,
     isSliding: false,
     slideTimer: 0,
+    moveSpeed: 0,
+    targetX: WORLD.ROAD_WIDTH / 2,
     
     // حالات الشخصية
     states: {
@@ -55,179 +79,502 @@ const character = {
     runAnimationSpeed: 5,
     runFrameCounter: 0,
     
-    // الصور (سيتم تحميلها لاحقاً)
-    images: {
-        character: null, // صورتك الأصلية
-        run1: null,
-        run2: null,
-        jump: null,
-        slide: null
-    },
-    
-    // للإشارة إلى ما إذا تم تحميل الصور بنجاح
+    // الصور
+    image: null,
     imagesLoaded: false
+};
+
+// تعريف الطريق
+const road = {
+    segments: [],
+    segmentLength: 200,
+    currentZ: 0
 };
 
 // تعريف العوائق
 const obstacles = [];
-const obstacleTypes = [
-    { width: 40, height: 60, color: '#b21f1f', type: 'jump' }, // يحتاج لقفز
-    { width: 80, height: 40, color: '#1a2a6c', type: 'slide' } // يحتاج لتزحلق
-];
+const coinsArray = [];
 
-// تعريف الخلفية
-const background = {
-    x: 0,
-    speed: 2
+// تعريف الكاميرا
+const camera = {
+    z: 0,
+    speed: 8,
+    height: WORLD.CAMERA_HEIGHT
 };
 
 // تحميل الصور
 function loadImages() {
-    let loadedCount = 0;
-    const totalImages = 5;
+    player.image = new Image();
+    player.image.src = 'assets/character.png';
     
-    // دالة للتحقق من تحميل جميع الصور
-    function checkAllLoaded() {
-        loadedCount++;
-        if (loadedCount === totalImages) {
-            character.imagesLoaded = true;
-            console.log("✅ تم تحميل جميع الصور بنجاح!");
-        }
-    }
-    
-    // 1. تحميل صورتك الأصلية - ستستخدم لكل الحالات
-    character.images.character = new Image();
-    character.images.character.src = 'assets/character.png';
-    character.images.character.onload = function() {
-        console.log("✅ تم تحميل character.png");
-        checkAllLoaded();
-    };
-    character.images.character.onerror = function() {
-        console.log("❌ فشل تحميل character.png - سيتم استخدام الرسم الافتراضي");
-        checkAllLoaded();
+    player.image.onload = function() {
+        player.imagesLoaded = true;
+        console.log("✅ تم تحميل صورة الشخصية");
     };
     
-    // 2. صور الركض (سيتم استخدام صورتك مع تعديل بسيط)
-    character.images.run1 = new Image();
-    character.images.run1.src = 'assets/character.png'; // نفس الصورة ولكن سنعدلها برمجياً
-    character.images.run1.onload = function() {
-        console.log("✅ تم تحميل run1.png (باستخدام character.png)");
-        checkAllLoaded();
+    player.image.onerror = function() {
+        console.log("❌ فشل تحميل صورة الشخصية - سيتم استخدام الرسم الافتراضي");
+        player.imagesLoaded = false;
     };
-    
-    character.images.run2 = new Image();
-    character.images.run2.src = 'assets/character.png'; // نفس الصورة ولكن سنعدلها برمجياً
-    character.images.run2.onload = function() {
-        console.log("✅ تم تحميل run2.png (باستخدام character.png)");
-        checkAllLoaded();
-    };
-    
-    // 3. صورة القفز
-    character.images.jump = new Image();
-    character.images.jump.src = 'assets/character.png'; // نفس الصورة
-    character.images.jump.onload = function() {
-        console.log("✅ تم تحميل jump.png (باستخدام character.png)");
-        checkAllLoaded();
-    };
-    
-    // 4. صورة التزحلق
-    character.images.slide = new Image();
-    character.images.slide.src = 'assets/character.png'; // نفس الصورة ولكن سنعدلها برمجياً
-    character.images.slide.onload = function() {
-        console.log("✅ تم تحميل slide.png (باستخدام character.png)");
-        checkAllLoaded();
-    };
-    
-    // إذا فشل تحميل الصورة الأصلية، نستخدم نسخة احتياطية
-    setTimeout(() => {
-        if (!character.imagesLoaded && loadedCount < totalImages) {
-            console.log("⚠️  بعض الصور لم تحمل، سيتم استخدام البدائل");
-            character.imagesLoaded = true;
-        }
-    }, 3000);
 }
 
-// إنشاء نسخة من الصورة مع تأثيرات مختلفة
-function createImageEffect(baseImage, effectType) {
-    // إنشاء عنصر canvas مؤقت
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
+// تهيئة الطريق
+function initRoad() {
+    road.segments = [];
+    const numSegments = Math.ceil(WORLD.ROAD_LENGTH / road.segmentLength);
     
-    tempCanvas.width = baseImage.width || character.width;
-    tempCanvas.height = baseImage.height || character.height;
+    for (let i = 0; i < numSegments; i++) {
+        road.segments.push({
+            z: i * road.segmentLength,
+            curve: Math.sin(i * 0.1) * 50, // منحنى بسيط للطريق
+            color: i % 2 === 0 ? '#2a5a8c' : '#1a3a5f'
+        });
+    }
+}
+
+// إنشاء عائق جديد
+function createObstacle() {
+    const lane = Math.floor(Math.random() * WORLD.LANES);
+    const type = Math.random() > 0.5 ? 'train' : 'barrier';
+    const size = type === 'train' ? 120 : 60;
     
-    // رسم الصورة الأصلية
-    tempCtx.drawImage(baseImage, 0, 0, tempCanvas.width, tempCanvas.height);
+    obstacles.push({
+        lane: lane,
+        z: camera.z + 2000, // يبدأ من بعيد
+        width: type === 'train' ? 180 : 80,
+        height: size,
+        type: type,
+        color: type === 'train' ? '#e63946' : '#f4a261',
+        passed: false
+    });
+}
+
+// إنشاء عملة جديدة
+function createCoin() {
+    const lane = Math.floor(Math.random() * WORLD.LANES);
     
-    // تطبيق التأثيرات حسب الحالة
-    if (effectType === 'run1') {
-        // تأثير الركض 1: إمالة بسيطة للأمام
-        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.save();
-        tempCtx.translate(tempCanvas.width/2, tempCanvas.height/2);
-        tempCtx.rotate(0.05); // إمالة بسيطة
-        tempCtx.drawImage(baseImage, -tempCanvas.width/2, -tempCanvas.height/2, tempCanvas.width, tempCanvas.height);
-        tempCtx.restore();
-    }
-    else if (effectType === 'run2') {
-        // تأثير الركض 2: إمالة معكوسة
-        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.save();
-        tempCtx.translate(tempCanvas.width/2, tempCanvas.height/2);
-        tempCtx.rotate(-0.05); // إمالة عكسية
-        tempCtx.drawImage(baseImage, -tempCanvas.width/2, -tempCanvas.height/2, tempCanvas.width, tempCanvas.height);
-        tempCtx.restore();
-    }
-    else if (effectType === 'jump') {
-        // تأثير القفز: الصورة طبيعية (بدون تغيير)
-        // يمكن إضافة تأثير ظل إذا أردت
-        tempCtx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        tempCtx.shadowBlur = 10;
-        tempCtx.shadowOffsetY = 5;
-        tempCtx.drawImage(baseImage, 0, 0, tempCanvas.width, tempCanvas.height);
-    }
-    else if (effectType === 'slide') {
-        // تأثير التزحلق: تصغير وإمالة
-        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-        const slideHeight = tempCanvas.height * 0.7;
-        const offsetY = tempCanvas.height - slideHeight;
+    coinsArray.push({
+        lane: lane,
+        z: camera.z + 1500,
+        collected: false,
+        rotation: 0
+    });
+}
+
+// تحويل إحداثيات 3D إلى 2D (المنظور)
+function project3DTo2D(x, y, z) {
+    const scale = WORLD.FOV / (z - camera.z + WORLD.FOV);
+    const screenX = canvas.width / 2 + (x - WORLD.ROAD_WIDTH / 2) * scale;
+    const screenY = canvas.height / 2 - (y - camera.height) * scale;
+    
+    return {
+        x: screenX,
+        y: screenY,
+        scale: scale
+    };
+}
+
+// رسم الطريق
+function drawRoad() {
+    // السماء
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height / 2);
+    skyGradient.addColorStop(0, '#0a1429');
+    skyGradient.addColorStop(1, '#1a3a5f');
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+    
+    // رسم مقاطع الطريق
+    for (let i = road.segments.length - 1; i >= 0; i--) {
+        const segment = road.segments[i];
+        const segmentScreenZ = segment.z - camera.z;
         
-        tempCtx.save();
-        // قص الجزء العلوي للتزحلق
-        tempCtx.drawImage(
-            baseImage, 
-            0, offsetY/2, // بداية القص من منتصف الصورة
-            tempCanvas.width, slideHeight, // حجم القص
-            0, offsetY, // مكان الرسم
-            tempCanvas.width, slideHeight // حجم الرسم
-        );
-        tempCtx.restore();
+        if (segmentScreenZ > -100 && segmentScreenZ < WORLD.FOV) {
+            const projStart = project3DTo2D(0, 0, segment.z);
+            const projEnd = project3DTo2D(0, 0, segment.z + road.segmentLength);
+            
+            // الطريق
+            ctx.fillStyle = segment.color;
+            ctx.beginPath();
+            ctx.moveTo(projStart.x - WORLD.ROAD_WIDTH * projStart.scale / 2, projStart.y);
+            ctx.lineTo(projStart.x + WORLD.ROAD_WIDTH * projStart.scale / 2, projStart.y);
+            ctx.lineTo(projEnd.x + WORLD.ROAD_WIDTH * projEnd.scale / 2, projEnd.y);
+            ctx.lineTo(projEnd.x - WORLD.ROAD_WIDTH * projEnd.scale / 2, projEnd.y);
+            ctx.closePath();
+            ctx.fill();
+            
+            // خطوط الطريق
+            ctx.strokeStyle = '#4cc9f0';
+            ctx.lineWidth = 3 * projStart.scale;
+            
+            // الخط الأوسط
+            ctx.beginPath();
+            ctx.moveTo(projStart.x, projStart.y);
+            ctx.lineTo(projEnd.x, projEnd.y);
+            ctx.stroke();
+            
+            // خطوط المسارات
+            for (let l = 1; l < WORLD.LANES; l++) {
+                const laneOffset = (l * WORLD.LANE_WIDTH - WORLD.ROAD_WIDTH / 2) * projStart.scale;
+                
+                ctx.setLineDash([20 * projStart.scale, 10 * projStart.scale]);
+                ctx.beginPath();
+                ctx.moveTo(projStart.x + laneOffset, projStart.y);
+                ctx.lineTo(projEnd.x + laneOffset, projEnd.y);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        }
+    }
+}
+
+// رسم العوائق
+function drawObstacles() {
+    for (const obstacle of obstacles) {
+        const obstacleZ = obstacle.z - camera.z;
+        
+        if (obstacleZ > -100 && obstacleZ < WORLD.FOV) {
+            const laneX = obstacle.lane * WORLD.LANE_WIDTH + WORLD.LANE_WIDTH / 2;
+            const proj = project3DTo2D(laneX, 50, obstacle.z);
+            
+            if (proj.scale > 0) {
+                const width = obstacle.width * proj.scale;
+                const height = obstacle.height * proj.scale;
+                
+                // جسم العائق
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(proj.x - width / 2, proj.y - height, width, height);
+                
+                // تفاصيل العائق
+                ctx.fillStyle = '#333';
+                if (obstacle.type === 'train') {
+                    // نوافذ القطار
+                    for (let i = 0; i < 3; i++) {
+                        ctx.fillRect(
+                            proj.x - width / 2 + 20 * proj.scale + i * 40 * proj.scale,
+                            proj.y - height + 20 * proj.scale,
+                            30 * proj.scale,
+                            30 * proj.scale
+                        );
+                    }
+                } else {
+                    // تفاصيل الحاجز
+                    ctx.fillRect(proj.x - 5 * proj.scale, proj.y - height, 10 * proj.scale, height);
+                    ctx.fillRect(proj.x - width / 2, proj.y - 10 * proj.scale, width, 10 * proj.scale);
+                }
+                
+                // ظل
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(proj.x - width / 2, proj.y, width, 10 * proj.scale);
+            }
+        }
+    }
+}
+
+// رسم العملات
+function drawCoins() {
+    for (const coin of coinsArray) {
+        const coinZ = coin.z - camera.z;
+        
+        if (coinZ > -50 && coinZ < WORLD.FOV) {
+            const laneX = coin.lane * WORLD.LANE_WIDTH + WORLD.LANE_WIDTH / 2;
+            const proj = project3DTo2D(laneX, 100, coin.z);
+            
+            if (proj.scale > 0) {
+                coin.rotation += 0.1;
+                const radius = 20 * proj.scale;
+                
+                ctx.save();
+                ctx.translate(proj.x, proj.y);
+                ctx.rotate(coin.rotation);
+                
+                // عملة ذهبية
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+                gradient.addColorStop(0, '#FFD700');
+                gradient.addColorStop(1, '#FFA500');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // تفاصيل العملة
+                ctx.fillStyle = '#DAA520';
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#FFD700';
+                ctx.font = `${14 * proj.scale}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', 0, 0);
+                
+                ctx.restore();
+                
+                // تأثير بريق
+                if (Math.sin(coin.rotation * 2) > 0.8) {
+                    ctx.shadowColor = '#FFD700';
+                    ctx.shadowBlur = 20;
+                    ctx.beginPath();
+                    ctx.arc(proj.x, proj.y, radius * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+    }
+}
+
+// رسم الشخصية
+function drawPlayer() {
+    const playerZ = player.z - camera.z;
+    const proj = project3DTo2D(player.x, player.y, player.z);
+    
+    if (proj.scale > 0) {
+        let width = player.width * proj.scale;
+        let height = player.height * proj.scale;
+        let drawY = proj.y - height;
+        
+        // تعديل الحجم حسب الحالة
+        if (player.currentState === player.states.SLIDING) {
+            height *= 0.7;
+            drawY = proj.y - height + (player.height * proj.scale * 0.3);
+        }
+        
+        ctx.save();
+        ctx.translate(proj.x, drawY + height / 2);
+        
+        // تأثير الركض
+        if (player.currentState === player.states.RUNNING) {
+            player.runFrameCounter++;
+            if (player.runFrameCounter >= player.runAnimationSpeed) {
+                player.runFrame = player.runFrame === 0 ? 1 : 0;
+                player.runFrameCounter = 0;
+            }
+            
+            // تمايل بسيط أثناء الركض
+            const bounce = Math.sin(Date.now() * 0.01) * 3;
+            ctx.translate(0, bounce);
+        }
+        
+        // رسم الصورة أو الرسم الافتراضي
+        if (player.imagesLoaded && player.image.complete) {
+            // قلب الصورة حسب الاتجاه
+            if (player.moveSpeed < 0) {
+                ctx.scale(-1, 1);
+                ctx.drawImage(player.image, -width / 2, -height / 2, width, height);
+            } else {
+                ctx.drawImage(player.image, -width / 2, -height / 2, width, height);
+            }
+        } else {
+            // رسم افتراضي
+            drawDefaultPlayer(width, height);
+        }
+        
+        // ظل
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, height / 2, width / 2, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // تأثير حالة
+        if (player.currentState === player.states.JUMPING) {
+            ctx.fillStyle = 'rgba(76, 201, 240, 0.3)';
+            ctx.beginPath();
+            ctx.arc(0, 0, width * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+
+// رسم شخصية افتراضية
+function drawDefaultPlayer(width, height) {
+    ctx.fillStyle = '#4cc9f0';
+    ctx.fillRect(-width / 2, -height / 2, width, height);
+    
+    // وجه
+    ctx.fillStyle = '#1a3a5f';
+    ctx.fillRect(-width / 4, -height / 3, width / 2, height / 4);
+    
+    // عيون
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(-width / 6, -height / 4, width / 10, 0, Math.PI * 2);
+    ctx.arc(width / 6, -height / 4, width / 10, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // فم
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, -height / 6, width / 8, 0, Math.PI);
+    ctx.stroke();
+}
+
+// تحديث الشخصية
+function updatePlayer() {
+    // الحركة الأفقية
+    const targetX = player.lane * WORLD.LANE_WIDTH + WORLD.LANE_WIDTH / 2;
+    player.x += (targetX - player.x) * 0.1;
+    
+    // الحركة العمودية (القفز)
+    if (player.isJumping) {
+        player.velocityY += player.gravity;
+        player.y += player.velocityY;
+        
+        if (player.y >= 300) {
+            player.y = 300;
+            player.isJumping = false;
+            player.currentState = player.states.RUNNING;
+            player.velocityY = 0;
+        }
     }
     
-    // تحويل Canvas إلى Image
-    const resultImage = new Image();
-    resultImage.src = tempCanvas.toDataURL();
-    return resultImage;
+    // التزحلق
+    if (player.isSliding) {
+        player.slideTimer++;
+        player.currentState = player.states.SLIDING;
+        
+        if (player.slideTimer > 40) {
+            player.isSliding = false;
+            player.slideTimer = 0;
+            player.currentState = player.isJumping ? player.states.JUMPING : player.states.RUNNING;
+        }
+    } else if (player.isJumping) {
+        player.currentState = player.states.JUMPING;
+    } else {
+        player.currentState = player.states.RUNNING;
+    }
+}
+
+// تحديث العوائق والعملات
+function updateObjects() {
+    // تحديث وإزالة العوائق
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].z -= camera.speed * gameSpeed;
+        
+        // التحقق من التجاوز
+        if (!obstacles[i].passed && obstacles[i].z < player.z) {
+            obstacles[i].passed = true;
+            distance += 10;
+            updateUI();
+        }
+        
+        // إزالة العوائق البعيدة
+        if (obstacles[i].z < camera.z - 500) {
+            obstacles.splice(i, 1);
+        }
+    }
+    
+    // تحديث وإزالة العملات
+    for (let i = coinsArray.length - 1; i >= 0; i--) {
+        coinsArray[i].z -= camera.speed * gameSpeed;
+        
+        // التحقق من جمع العملة
+        if (!coinsArray[i].collected && 
+            coinsArray[i].lane === player.lane &&
+            Math.abs(coinsArray[i].z - player.z) < 100) {
+            
+            coinsArray[i].collected = true;
+            coins += 1;
+            updateUI();
+        }
+        
+        // إزالة العملات البعيدة
+        if (coinsArray[i].z < camera.z - 500) {
+            coinsArray.splice(i, 1);
+        }
+    }
+    
+    // إنشاء عوائق وعملات جديدة
+    if (Math.random() < 0.02 * gameSpeed) {
+        createObstacle();
+    }
+    
+    if (Math.random() < 0.03 * gameSpeed) {
+        createCoin();
+    }
+}
+
+// التحقق من التصادم
+function checkCollision() {
+    for (const obstacle of obstacles) {
+        // التحقق من نفس المسار والقرب
+        if (obstacle.lane === player.lane && 
+            Math.abs(obstacle.z - player.z) < 150 &&
+            !obstacle.passed) {
+            
+            // التحقق من إمكانية التجاوز
+            let canPass = false;
+            
+            if (obstacle.type === 'train' && player.currentState === player.states.JUMPING) {
+                canPass = true; // القطار يحتاج قفز
+            } else if (obstacle.type === 'barrier' && player.currentState === player.states.SLIDING) {
+                canPass = true; // الحاجز يحتاج تزحلق
+            }
+            
+            if (!canPass) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// تحريك الكاميرا (الطريق)
+function updateCamera() {
+    camera.z += camera.speed * gameSpeed;
+    distance += camera.speed * 0.1;
+    
+    // تحديث شريط العمق
+    const depthBar = document.querySelector('.depth-bar');
+    const depthPercent = (camera.z % 1000) / 10;
+    depthBar.style.width = `${depthPercent}%`;
+    
+    // زيادة السرعة كل 500 متر
+    if (distance % 500 < 1 && distance > 100) {
+        gameSpeed = Math.min(gameSpeed + 0.1, 3);
+        updateUI();
+    }
+}
+
+// تحديث واجهة المستخدم
+function updateUI() {
+    distanceElement.textContent = `${Math.floor(distance)} م`;
+    coinsElement.textContent = coins;
+    speedElement.textContent = `${gameSpeed.toFixed(1)}x`;
+    livesElement.textContent = lives;
+    highScoreElement.textContent = highScore;
 }
 
 // تهيئة اللعبة
 function initGame() {
     // إعادة تعيين القيم
-    score = 0;
+    distance = 0;
+    coins = 0;
     lives = 3;
     gameSpeed = 1;
-    obstaclesPassed = 0;
     
     // إعادة تعيين الشخصية
-    character.x = 100;
-    character.y = 300;
-    character.velocityY = 0;
-    character.isJumping = false;
-    character.isSliding = false;
-    character.currentState = character.states.RUNNING;
+    player.lane = 1;
+    player.x = WORLD.ROAD_WIDTH / 2;
+    player.y = 300;
+    player.z = 500;
+    player.isJumping = false;
+    player.isSliding = false;
+    player.currentState = player.states.RUNNING;
     
-    // تفريغ العوائق
+    // إعادة تعيين الكاميرا
+    camera.z = 0;
+    
+    // تفريغ المصفوفات
     obstacles.length = 0;
+    coinsArray.length = 0;
+    
+    // تهيئة الطريق
+    initRoad();
     
     // تحديث واجهة المستخدم
     updateUI();
@@ -238,355 +585,42 @@ function initGame() {
     endScreen.classList.remove('active');
     
     gameRunning = true;
+    lastTime = performance.now();
     
     // بدء حلقة اللعبة
     gameLoop();
 }
 
-// تحديث واجهة المستخدم
-function updateUI() {
-    scoreElement.textContent = score;
-    speedElement.textContent = `${gameSpeed.toFixed(1)}x`;
-    livesElement.textContent = lives;
-    highScoreElement.textContent = highScore;
-}
-
-// رسم الخلفية
-function drawBackground() {
-    // خلفية متدرجة
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#1a2a6c');
-    gradient.addColorStop(0.5, '#0a0e29');
-    gradient.addColorStop(1, '#1a2a6c');
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // رسم أرضية اللعبة
-    ctx.fillStyle = '#333';
-    ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
-    
-    // خط النهاية
-    ctx.fillStyle = '#fdbb2d';
-    ctx.fillRect(0, canvas.height - 20, canvas.width, 3);
-    
-    // رسم نجوم في الخلفية
-    ctx.fillStyle = '#fff';
-    for (let i = 0; i < 50; i++) {
-        const x = (i * 40 + background.x) % canvas.width;
-        const y = (i * 13) % (canvas.height - 100);
-        const size = Math.random() * 2 + 1;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    
-    // تحريك الخلفية
-    background.x -= background.speed * gameSpeed;
-}
-
-// رسم الشخصية
-function drawCharacter() {
-    // إذا لم يتم تحميل الصور بعد، استخدم الرسم الافتراضي
-    if (!character.imagesLoaded || !character.images.character.complete) {
-        drawDefaultCharacter();
-        return;
-    }
-    
-    let charImg = character.images.character; // الصورة الأساسية
-    
-    // حساب أبعاد الرسم بناءً على الحالة
-    let drawWidth = character.width;
-    let drawHeight = character.height;
-    let drawY = character.y;
-    let rotation = 0;
-    
-    switch (character.currentState) {
-        case character.states.RUNNING:
-            // تأثير الركض: تمايل بسيط
-            character.runFrameCounter++;
-            if (character.runFrameCounter >= character.runAnimationSpeed) {
-                character.runFrame = character.runFrame === 0 ? 1 : 0;
-                character.runFrameCounter = 0;
-            }
-            // تمايل بسيط أثناء الركض
-            rotation = character.runFrame === 0 ? 0.05 : -0.05;
-            break;
-            
-        case character.states.JUMPING:
-            // القفز: بدون دوران
-            rotation = 0;
-            break;
-            
-        case character.states.SLIDING:
-            // التزحلق: تصغير وإمالة
-            drawHeight = character.height * 0.7;
-            drawY = character.y + (character.height - drawHeight);
-            rotation = 0.3; // إمالة للأمام
-            break;
-    }
-    
-    // تطبيق التحويلات
-    ctx.save();
-    ctx.translate(character.x + drawWidth/2, drawY + drawHeight/2);
-    ctx.rotate(rotation);
-    
-    // رسم الصورة
-    if (charImg.complete && charImg.naturalWidth > 0) {
-        ctx.drawImage(charImg, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
-        
-        // إضافة تأثير ظل للقفز
-        if (character.currentState === character.states.JUMPING) {
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-            ctx.shadowBlur = 10;
-            ctx.shadowOffsetY = 5;
-            ctx.drawImage(charImg, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
-        }
-    } else {
-        // إذا فشل رسم الصورة، ارسم الشكل الافتراضي
-        drawDefaultCharacterAtPosition(-drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
-    }
-    
-    ctx.restore();
-    
-    // إضافة نص الحالة للتتبع (يمكن إزالته لاحقاً)
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px Cairo';
-    let stateText = '';
-    if (character.currentState === character.states.RUNNING) stateText = 'يجري';
-    if (character.currentState === character.states.JUMPING) stateText = 'يقفز';
-    if (character.currentState === character.states.SLIDING) stateText = 'يتزحلق';
-    
-    ctx.fillText(stateText, character.x, character.y - 10);
-}
-
-// رسم شخصية افتراضية في موقع محدد
-function drawDefaultCharacterAtPosition(x, y, width, height) {
-    ctx.fillStyle = '#fdbb2d';
-    ctx.fillRect(x, y, width, height);
-    
-    // رسم العيون
-    ctx.fillStyle = 'white';
-    ctx.fillRect(x + 10, y + 15, 10, 10);
-    ctx.fillRect(x + width - 20, y + 15, 10, 10);
-    
-    // رسم الحدود
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, width, height);
-}
-
-// رسم شخصية افتراضية (النسخة الأصلية)
-function drawDefaultCharacter() {
-    drawDefaultCharacterAtPosition(character.x, character.y, character.width, character.height);
-}
-
-// إنشاء عائق جديد
-function createObstacle() {
-    const obstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-    const obstacle = {
-        x: canvas.width,
-        y: canvas.height - 20 - obstacleType.height,
-        width: obstacleType.width,
-        height: obstacleType.height,
-        color: obstacleType.color,
-        type: obstacleType.type,
-        passed: false
-    };
-    
-    obstacles.push(obstacle);
-}
-
-// رسم العوائق
-function drawObstacles() {
-    obstacles.forEach(obstacle => {
-        // إذا فشل تحميل الصور، استخدم الرسومات الافتراضية
-        ctx.fillStyle = obstacle.color;
-        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-        
-        // إضافة حدود للعائق
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-        
-        // إضافة أيقونة نوع العائق
-        ctx.fillStyle = '#fff';
-        ctx.font = '16px Arial';
-        
-        let icon = '';
-        if (obstacle.type === 'jump') icon = '⬆️';
-        if (obstacle.type === 'slide') icon = '⬇️';
-        
-        ctx.fillText(icon, obstacle.x + obstacle.width/2 - 10, obstacle.y - 10);
-    });
-}
-
-// تحديث العوائق
-function updateObstacles() {
-    // تحريك العوائق
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-        obstacles[i].x -= 5 * gameSpeed;
-        
-        // إذا تجاوز العائق اللاعب ولم يتم احتسابه بعد
-        if (!obstacles[i].passed && obstacles[i].x + obstacles[i].width < character.x) {
-            obstacles[i].passed = true;
-            score += 5;
-            obstaclesPassed++;
-            
-            // زيادة السرعة كل 50 نقطة
-            if (score % 50 === 0) {
-                gameSpeed += 0.2;
-            }
-            
-            updateUI();
-        }
-        
-        // إذا خرج العائق من الشاشة، قم بإزالته
-        if (obstacles[i].x + obstacles[i].width < 0) {
-            obstacles.splice(i, 1);
-        }
-    }
-    
-    // إنشاء عوائق جديدة
-    if (Math.random() < 0.02 * gameSpeed) {
-        createObstacle();
-    }
-}
-
-// التحقق من التصادم
-function checkCollision() {
-    // حدود الشخصية بناءً على حالتها
-    let charHeight = character.height;
-    let charY = character.y;
-    
-    if (character.currentState === character.states.SLIDING) {
-        charHeight = character.height * 0.7;
-        charY = character.y + (character.height - charHeight);
-    }
-    
-    const charBounds = {
-        x: character.x + 10, // تقليل عرض الشخصية قليلاً للتصادم
-        y: charY + 10, // تقليل ارتفاع الشخصية قليلاً للتصادم
-        width: character.width - 20,
-        height: charHeight - 20
-    };
-    
-    // التحقق من تصادم مع كل عائق
-    for (const obstacle of obstacles) {
-        const obstacleBounds = {
-            x: obstacle.x,
-            y: obstacle.y,
-            width: obstacle.width,
-            height: obstacle.height
-        };
-        
-        // التحقق من التداخل
-        if (charBounds.x < obstacleBounds.x + obstacleBounds.width &&
-            charBounds.x + charBounds.width > obstacleBounds.x &&
-            charBounds.y < obstacleBounds.y + obstacleBounds.height &&
-            charBounds.y + charBounds.height > obstacleBounds.y) {
-            
-            // التحقق من إمكانية تجاوز العائق
-            let canPass = false;
-            
-            if (obstacle.type === 'jump' && character.currentState === character.states.JUMPING) {
-                canPass = true;
-            }
-            
-            if (obstacle.type === 'slide' && character.currentState === character.states.SLIDING) {
-                canPass = true;
-            }
-            
-            // إذا لم يتمكن اللاعب من تجاوز العائق، فقد حياة
-            if (!canPass) {
-                return true;
-            }
-        }
-    }
-    
-    return false;
-}
-
-// تحديث الشخصية
-function updateCharacter() {
-    // تطبيق الجاذبية
-    if (character.isJumping) {
-        character.velocityY += character.gravity;
-        character.y += character.velocityY;
-        
-        // التحقق من وصول الشخصية للأرض
-        if (character.y >= 300) {
-            character.y = 300;
-            character.isJumping = false;
-            character.currentState = character.states.RUNNING;
-            character.velocityY = 0;
-        }
-    }
-    
-    // تحديث حالة التزحلق
-    if (character.isSliding) {
-        character.slideTimer++;
-        character.currentState = character.states.SLIDING;
-        
-        // إنهاء التزحلق بعد فترة
-        if (character.slideTimer > 30) {
-            character.isSliding = false;
-            character.slideTimer = 0;
-            character.currentState = character.isJumping ? character.states.JUMPING : character.states.RUNNING;
-        }
-    } else if (character.isJumping) {
-        character.currentState = character.states.JUMPING;
-    } else {
-        character.currentState = character.states.RUNNING;
-    }
-}
-
-// القفز
-function jump() {
-    if (!character.isJumping) {
-        character.isJumping = true;
-        character.velocityY = character.jumpForce;
-        character.currentState = character.states.JUMPING;
-    }
-}
-
-// التزحلق
-function slide() {
-    if (!character.isSliding && !character.isJumping) {
-        character.isSliding = true;
-        character.slideTimer = 0;
-        character.currentState = character.states.SLIDING;
-    }
-}
-
 // حلقة اللعبة الرئيسية
-function gameLoop() {
+function gameLoop(currentTime = 0) {
     if (!gameRunning) return;
+    
+    const deltaTime = (currentTime - lastTime) / 16.67; // تجانس الحركة
+    lastTime = currentTime;
     
     // مسح الشاشة
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // رسم المكونات
-    drawBackground();
-    drawCharacter();
+    // رسم وتحديث المكونات
+    drawRoad();
     drawObstacles();
+    drawCoins();
+    drawPlayer();
     
-    // تحديث المكونات
-    updateCharacter();
-    updateObstacles();
+    updatePlayer();
+    updateObjects();
+    updateCamera();
     
     // التحقق من التصادم
     if (checkCollision()) {
         lives--;
         updateUI();
         
-        // إزالة العائق الذي تسبب في التصادم
+        // إزالة العائق المتصادم
         if (obstacles.length > 0) {
             obstacles.shift();
         }
         
-        // إذا نفذت الأرواح، انتهت اللعبة
         if (lives <= 0) {
             endGame();
             return;
@@ -602,15 +636,17 @@ function endGame() {
     gameRunning = false;
     
     // تحديث أفضل نتيجة
-    if (score > highScore) {
-        highScore = score;
+    const totalScore = Math.floor(distance) + coins * 100;
+    if (totalScore > highScore) {
+        highScore = totalScore;
         localStorage.setItem('highScore', highScore);
     }
     
     // تحديث شاشة النهاية
-    finalScoreElement.textContent = score;
+    distanceTraveledElement.textContent = Math.floor(distance);
+    coinsCollectedElement.textContent = coins;
+    finalScoreElement.textContent = totalScore;
     highScoreElement.textContent = highScore;
-    obstaclesPassedElement.textContent = obstaclesPassed;
     
     // الانتقال إلى شاشة النهاية
     gameScreen.classList.remove('active');
@@ -622,40 +658,104 @@ function endGame() {
     }
 }
 
-// إضافة مستمعي الأحداث
-startBtn.addEventListener('click', () => {
-    initGame();
-});
-
-restartBtn.addEventListener('click', () => {
-    initGame();
-});
-
-jumpBtn.addEventListener('click', jump);
-slideBtn.addEventListener('click', slide);
-
-// إضافة التحكم باللمس
-canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    
-    // القفز عند النقر في النصف العلوي من الشاشة
-    if (e.touches[0].clientY < window.innerHeight / 2) {
-        jump();
-    } 
-    // التزحلق عند النقر في النصف السفلي من الشاشة
-    else {
-        slide();
+// التحكم في الحركة
+function moveLeft() {
+    if (player.lane > 0) {
+        player.lane--;
+        player.moveSpeed = -5;
     }
-});
+}
 
-// إضافة التحكم بلوحة المفاتيح
+function moveRight() {
+    if (player.lane < WORLD.LANES - 1) {
+        player.lane++;
+        player.moveSpeed = 5;
+    }
+}
+
+function jump() {
+    if (!player.isJumping) {
+        player.isJumping = true;
+        player.velocityY = player.jumpForce;
+        player.currentState = player.states.JUMPING;
+    }
+}
+
+function slide() {
+    if (!player.isSliding && !player.isJumping) {
+        player.isSliding = true;
+        player.slideTimer = 0;
+        player.currentState = player.states.SLIDING;
+    }
+}
+
+// إضافة مستمعي الأحداث
+startBtn.addEventListener('click', initGame);
+restartBtn.addEventListener('click', initGame);
+
+// مستمعي أزرار التحكم
+leftBtn.addEventListener('click', moveLeft);
+rightBtn.addEventListener('click', moveRight);
+upBtn.addEventListener('click', jump);
+downBtn.addEventListener('click', slide);
+jumpBtn.addEventListener('click', jump);
+
+// التحكم بلوحة المفاتيح
 document.addEventListener('keydown', (e) => {
     if (!gameRunning) return;
     
-    if (e.code === 'Space' || e.code === 'ArrowUp') {
-        jump();
-    } else if (e.code === 'ArrowDown') {
-        slide();
+    switch(e.code) {
+        case 'ArrowLeft':
+        case 'KeyA':
+            moveLeft();
+            break;
+        case 'ArrowRight':
+        case 'KeyD':
+            moveRight();
+            break;
+        case 'ArrowUp':
+        case 'KeyW':
+        case 'Space':
+            jump();
+            break;
+        case 'ArrowDown':
+        case 'KeyS':
+            slide();
+            break;
+    }
+});
+
+// التحكم باللمس (سحب)
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+});
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!gameRunning) return;
+    
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    const diffX = touchX - touchStartX;
+    const diffY = touchY - touchStartY;
+    
+    // تحريك أفقي
+    if (Math.abs(diffX) > 20) {
+        if (diffX > 0) moveRight();
+        else moveLeft();
+        touchStartX = touchX;
+    }
+    
+    // تحريك عمودي
+    if (Math.abs(diffY) > 20) {
+        if (diffY < 0) jump();
+        else slide();
+        touchStartY = touchY;
     }
 });
 
@@ -667,13 +767,12 @@ highScoreElement.textContent = highScore;
 
 // إضافة تأثير عند تحميل الصفحة
 window.addEventListener('load', () => {
-    console.log("🎮 تم تحميل اللعبة بنجاح!");
-    console.log("💡 نصائح:");
-    console.log("- تأكد من وجود ملف character.png في مجلد assets");
-    console.log("- يمكنك النقر على الشاشة للقفز (النصف العلوي) أو التزحلق (النصف السفلي)");
+    console.log("🎮 Subway Runner 3D جاهز!");
+    console.log("🎯 حرك الشخصية يمين/يسار لتجنب العوائق");
+    console.log("⬆️  اضغط للقفز فوق القطارات");
+    console.log("⬇️  اضغط للتزحلق تحت الحواجز");
     
-    // عرض رسالة ترحيب
     setTimeout(() => {
-        alert("🎯 مرحباً بك في لعبة العدّاء!\n\n✅ الصورة الشخصية جاهزة\n✅ أنيميشين الركض جاهزة\n✅ القفز يعمل\n✅ التزحلق يعمل\n\nاضغط على 'ابدأ اللعب' للبدء!");
+        alert("🎮 مرحباً بك في Subway Runner 3D!\n\nمثل Subway Surfers:\n• حرك يمين/يسار\n• القفز فوق القطارات\n• التزحلق تحت الحواجز\n• جمع العملات\n\nابدأ الركض!");
     }, 500);
 });
